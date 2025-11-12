@@ -1,0 +1,8 @@
+# Ignore all files in this directory by default
+*
+
+# Except this README
+!README.md
+
+# Allow .gitkeep files
+!.gitkeep
