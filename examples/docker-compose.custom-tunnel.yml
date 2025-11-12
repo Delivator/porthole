@@ -1,0 +1,31 @@
+# Example: Custom Tunnel Configuration
+
+version: '3.8'
+
+services:
+  porthole-custom:
+    build: ..
+    image: porthole:latest
+    container_name: porthole-custom
+    restart: unless-stopped
+    
+    environment:
+      SSH_REMOTE_HOST: vps.example.com
+      SSH_REMOTE_PORT: 22
+      SSH_REMOTE_USER: myuser
+      
+      # Use custom tunnel arguments for complex setups
+      SSH_TUNNEL_TYPE: custom
+      SSH_CUSTOM_TUNNEL_ARGS: "-R 8080:localhost:80 -R 8443:localhost:443 -R 9000:192.168.1.100:9000"
+      
+      # Additional SSH options
+      SSH_EXTRA_ARGS: "-o ServerAliveInterval=60 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes"
+      
+      SSH_STRICT_HOST_KEY_CHECKING: no
+      AUTOSSH_POLL: 30
+      AUTOSSH_LOGLEVEL: 2
+    
+    volumes:
+      - ../ssh-keys:/ssh-key:ro
+    
+    network_mode: host

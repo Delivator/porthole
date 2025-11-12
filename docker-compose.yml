@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  porthole:
+    build: .
+    image: porthole:latest
+    container_name: porthole-tunnel
+    restart: unless-stopped
+    
+    # Environment variables for tunnel configuration
+    environment:
+      # Required: Remote SSH server details
+      SSH_REMOTE_HOST: ${SSH_REMOTE_HOST}
+      SSH_REMOTE_PORT: ${SSH_REMOTE_PORT:-22}
+      SSH_REMOTE_USER: ${SSH_REMOTE_USER}
+      
+      # Tunnel configuration
+      SSH_TUNNEL_TYPE: ${SSH_TUNNEL_TYPE:-remote}
+      SSH_TUNNEL_LOCAL_PORT: ${SSH_TUNNEL_LOCAL_PORT}
+      SSH_TUNNEL_REMOTE_PORT: ${SSH_TUNNEL_REMOTE_PORT}
+      SSH_TUNNEL_REMOTE_HOST: ${SSH_TUNNEL_REMOTE_HOST:-localhost}
+      
+      # Optional: SSH private key as environment variable
+      # SSH_PRIVATE_KEY: ${SSH_PRIVATE_KEY}
+      
+      # Optional: Additional SSH arguments
+      SSH_EXTRA_ARGS: ${SSH_EXTRA_ARGS:-}
+      
+      # Optional: SSH strict host key checking (yes/no)
+      SSH_STRICT_HOST_KEY_CHECKING: ${SSH_STRICT_HOST_KEY_CHECKING:-no}
+      
+      # AutoSSH configuration
+      AUTOSSH_GATETIME: ${AUTOSSH_GATETIME:-0}
+      AUTOSSH_PORT: ${AUTOSSH_PORT:-0}
+      AUTOSSH_POLL: ${AUTOSSH_POLL:-60}
+      AUTOSSH_FIRST_POLL: ${AUTOSSH_FIRST_POLL:-30}
+      AUTOSSH_LOGLEVEL: ${AUTOSSH_LOGLEVEL:-1}
+      
+      # Timezone
+      TZ: ${TZ:-UTC}
+    
+    # Volumes for SSH keys (alternative to environment variable)
+    volumes:
+      - ./ssh-keys:/ssh-key:ro
+      # Optionally mount a custom known_hosts file
+      # - ./known_hosts:/ssh-key/known_hosts:ro
+    
+    # Network mode - use host network for easy access to local services
+    # Comment this out if you want to use bridge network
+    network_mode: host
+    
+    # If using bridge network, uncomment these ports
+    # ports:
+    #   - "${SSH_TUNNEL_LOCAL_PORT}:${SSH_TUNNEL_LOCAL_PORT}"
+    
+    # Healthcheck (optional)
+    # healthcheck:
+    #   test: ["CMD", "pgrep", "autossh"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 10s

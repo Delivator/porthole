@@ -1,0 +1,30 @@
+# Example: SOCKS Proxy for Secure Browsing
+
+version: '3.8'
+
+services:
+  porthole-socks:
+    build: ..
+    image: porthole:latest
+    container_name: porthole-socks
+    restart: unless-stopped
+    
+    environment:
+      # Remote VPS for SOCKS proxy
+      SSH_REMOTE_HOST: vps.example.com
+      SSH_REMOTE_PORT: 22
+      SSH_REMOTE_USER: myuser
+      
+      # Create a SOCKS proxy on local port 1080
+      SSH_TUNNEL_TYPE: dynamic
+      SSH_TUNNEL_LOCAL_PORT: 1080
+      
+      SSH_STRICT_HOST_KEY_CHECKING: no
+      AUTOSSH_LOGLEVEL: 1
+    
+    volumes:
+      - ../ssh-keys:/ssh-key:ro
+    
+    # Expose SOCKS proxy port
+    ports:
+      - "1080:1080"

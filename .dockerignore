@@ -1,0 +1,43 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# SSH keys (security)
+ssh-keys/
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Documentation
+README.md
+LICENSE
+*.md
+docs/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

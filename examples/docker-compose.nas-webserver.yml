@@ -1,0 +1,37 @@
+# Example: Expose Local Web Server on NAS to Public VPS
+
+version: '3.8'
+
+services:
+  porthole:
+    build: .
+    image: porthole:latest
+    container_name: porthole-webserver
+    restart: unless-stopped
+    
+    environment:
+      # Remote VPS details
+      SSH_REMOTE_HOST: vps.example.com
+      SSH_REMOTE_PORT: 22
+      SSH_REMOTE_USER: myuser
+      
+      # Expose local port 80 (web server on NAS) to remote port 8080 on VPS
+      SSH_TUNNEL_TYPE: remote
+      SSH_TUNNEL_LOCAL_PORT: 80
+      SSH_TUNNEL_REMOTE_PORT: 8080
+      SSH_TUNNEL_REMOTE_HOST: localhost
+      
+      # AutoSSH settings
+      AUTOSSH_POLL: 60
+      AUTOSSH_LOGLEVEL: 1
+      
+      # Disable strict host checking for simplicity
+      SSH_STRICT_HOST_KEY_CHECKING: no
+      
+      TZ: America/New_York
+    
+    volumes:
+      - ./ssh-keys:/ssh-key:ro
+    
+    # Use host network to access local services on the NAS
+    network_mode: host
