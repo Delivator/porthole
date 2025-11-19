@@ -65,8 +65,79 @@ fi
 # Build SSH tunnel arguments based on tunnel type
 TUNNEL_ARGS=""
 
-if [ "$SSH_TUNNEL_TYPE" == "remote" ] || [ "$SSH_TUNNEL_TYPE" == "R" ]; then
-    # Remote tunnel (expose local service on remote server)
+# Check if multiple tunnels are defined (new method)
+if [ -n "$SSH_TUNNELS" ]; then
+    # Multiple tunnels mode - SSH_TUNNELS contains multiple tunnel definitions
+    # Format: "R:8080:localhost:8080,R:25565:localhost:25565,L:3306:dbhost:3306"
+    log "Multiple tunnels mode enabled"
+    
+    IFS=',' read -ra TUNNEL_ARRAY <<< "$SSH_TUNNELS"
+    TUNNEL_COUNT=0
+    
+    for tunnel_def in "${TUNNEL_ARRAY[@]}"; do
+        # Trim whitespace
+        tunnel_def=$(echo "$tunnel_def" | xargs)
+        
+        # Parse tunnel definition: TYPE:ARG1:ARG2:ARG3
+        IFS=':' read -ra TUNNEL_PARTS <<< "$tunnel_def"
+        
+        tunnel_type="${TUNNEL_PARTS[0]}"
+        
+        case "$tunnel_type" in
+            R|remote)
+                # Remote tunnel: R:remote_port:target_host:target_port
+                remote_port="${TUNNEL_PARTS[1]}"
+                target_host="${TUNNEL_PARTS[2]:-localhost}"
+                target_port="${TUNNEL_PARTS[3]}"
+                
+                if [ -z "$remote_port" ] || [ -z "$target_port" ]; then
+                    error "Invalid remote tunnel definition: $tunnel_def"
+                    exit 1
+                fi
+                
+                TUNNEL_ARGS="$TUNNEL_ARGS -R ${remote_port}:${target_host}:${target_port}"
+                log "  Remote tunnel: VPS:${remote_port} -> ${target_host}:${target_port}"
+                TUNNEL_COUNT=$((TUNNEL_COUNT + 1))
+                ;;
+            L|local)
+                # Local tunnel: L:local_port:target_host:target_port
+                local_port="${TUNNEL_PARTS[1]}"
+                target_host="${TUNNEL_PARTS[2]:-localhost}"
+                target_port="${TUNNEL_PARTS[3]}"
+                
+                if [ -z "$local_port" ] || [ -z "$target_port" ]; then
+                    error "Invalid local tunnel definition: $tunnel_def"
+                    exit 1
+                fi
+                
+                TUNNEL_ARGS="$TUNNEL_ARGS -L ${local_port}:${target_host}:${target_port}"
+                log "  Local tunnel: localhost:${local_port} -> ${target_host}:${target_port}"
+                TUNNEL_COUNT=$((TUNNEL_COUNT + 1))
+                ;;
+            D|dynamic)
+                # Dynamic tunnel: D:local_port
+                local_port="${TUNNEL_PARTS[1]}"
+                
+                if [ -z "$local_port" ]; then
+                    error "Invalid dynamic tunnel definition: $tunnel_def"
+                    exit 1
+                fi
+                
+                TUNNEL_ARGS="$TUNNEL_ARGS -D ${local_port}"
+                log "  Dynamic tunnel (SOCKS): localhost:${local_port}"
+                TUNNEL_COUNT=$((TUNNEL_COUNT + 1))
+                ;;
+            *)
+                error "Unknown tunnel type in definition: $tunnel_def"
+                exit 1
+                ;;
+        esac
+    done
+    
+    log "Configured $TUNNEL_COUNT tunnel(s)"
+    
+elif [ "$SSH_TUNNEL_TYPE" == "remote" ] || [ "$SSH_TUNNEL_TYPE" == "R" ]; then
+    # Single remote tunnel (backward compatibility)
     if [ -z "$SSH_TUNNEL_LOCAL_PORT" ] || [ -z "$SSH_TUNNEL_REMOTE_PORT" ]; then
         error "SSH_TUNNEL_LOCAL_PORT and SSH_TUNNEL_REMOTE_PORT are required for remote tunnel"
         exit 1
@@ -75,7 +146,7 @@ if [ "$SSH_TUNNEL_TYPE" == "remote" ] || [ "$SSH_TUNNEL_TYPE" == "R" ]; then
     log "Setting up REMOTE tunnel: Remote port ${SSH_TUNNEL_REMOTE_PORT} -> ${SSH_TUNNEL_REMOTE_HOST}:${SSH_TUNNEL_LOCAL_PORT}"
     
 elif [ "$SSH_TUNNEL_TYPE" == "local" ] || [ "$SSH_TUNNEL_TYPE" == "L" ]; then
-    # Local tunnel (access remote service locally)
+    # Single local tunnel (backward compatibility)
     if [ -z "$SSH_TUNNEL_LOCAL_PORT" ] || [ -z "$SSH_TUNNEL_REMOTE_PORT" ]; then
         error "SSH_TUNNEL_LOCAL_PORT and SSH_TUNNEL_REMOTE_PORT are required for local tunnel"
         exit 1
@@ -84,7 +155,7 @@ elif [ "$SSH_TUNNEL_TYPE" == "local" ] || [ "$SSH_TUNNEL_TYPE" == "L" ]; then
     log "Setting up LOCAL tunnel: Local port ${SSH_TUNNEL_LOCAL_PORT} -> ${SSH_TUNNEL_REMOTE_HOST}:${SSH_TUNNEL_REMOTE_PORT}"
     
 elif [ "$SSH_TUNNEL_TYPE" == "dynamic" ] || [ "$SSH_TUNNEL_TYPE" == "D" ]; then
-    # Dynamic tunnel (SOCKS proxy)
+    # Single dynamic tunnel (backward compatibility)
     if [ -z "$SSH_TUNNEL_LOCAL_PORT" ]; then
         error "SSH_TUNNEL_LOCAL_PORT is required for dynamic tunnel"
         exit 1

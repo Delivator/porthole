@@ -77,9 +77,33 @@ docker-compose down
 
 ## Common Configurations
 
-### Multiple Services
+### Multiple Services (Recommended - Single Container)
 
-Edit `docker-compose.yml` to add multiple tunnel instances:
+**NEW:** Use `SSH_TUNNELS` to run multiple tunnels in one container (much more efficient!):
+
+```bash
+# In .env
+SSH_TUNNELS=R:8080:localhost:80,R:8443:localhost:443,R:2222:localhost:22
+```
+
+Or in docker-compose.yml:
+
+```yaml
+environment:
+  SSH_REMOTE_HOST: vps.example.com
+  SSH_REMOTE_USER: myuser
+  # Multiple tunnels in ONE container - efficient!
+  SSH_TUNNELS: R:8080:localhost:80,R:8443:localhost:443,R:2222:localhost:22
+```
+
+This exposes:
+- Web server on VPS:8080 → local:80
+- HTTPS on VPS:8443 → local:443  
+- SSH on VPS:2222 → local:22
+
+### Multiple Services (Legacy - Multiple Containers)
+
+If you prefer separate containers (less efficient):
 
 ```yaml
 services:

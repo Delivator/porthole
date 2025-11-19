@@ -14,7 +14,11 @@ services:
       SSH_REMOTE_PORT: ${SSH_REMOTE_PORT:-22}
       SSH_REMOTE_USER: ${SSH_REMOTE_USER}
       
-      # Tunnel configuration
+      # Multiple tunnels configuration (recommended - more efficient)
+      # Use this to define multiple tunnels in one container
+      SSH_TUNNELS: ${SSH_TUNNELS:-}
+      
+      # Single tunnel configuration (legacy mode)
       SSH_TUNNEL_TYPE: ${SSH_TUNNEL_TYPE:-remote}
       SSH_TUNNEL_LOCAL_PORT: ${SSH_TUNNEL_LOCAL_PORT}
       SSH_TUNNEL_REMOTE_PORT: ${SSH_TUNNEL_REMOTE_PORT}

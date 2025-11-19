@@ -73,6 +73,34 @@ A highly configurable containerized SSH tunnel using autossh. Perfect for exposi
 
 #### Tunnel Configuration
 
+**Multiple Tunnels (Recommended for efficiency)**
+
+Use `SSH_TUNNELS` to define multiple tunnels in a single container:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `SSH_TUNNELS` | Comma-separated list of tunnel definitions | `R:8080:localhost:80,R:25565:localhost:25565` |
+
+Format: `TYPE:ARG1:ARG2:ARG3,TYPE:ARG1:ARG2:ARG3,...`
+
+- **Remote tunnel**: `R:remote_port:target_host:target_port` or `remote:remote_port:target_host:target_port`
+- **Local tunnel**: `L:local_port:target_host:target_port` or `local:local_port:target_host:target_port`
+- **Dynamic tunnel**: `D:local_port` or `dynamic:local_port`
+
+Examples:
+```bash
+# Single remote tunnel
+SSH_TUNNELS=R:8080:localhost:80
+
+# Multiple remote tunnels (web + minecraft server)
+SSH_TUNNELS=R:8080:localhost:80,R:25565:localhost:25565,R:8443:localhost:443
+
+# Mixed tunnels (remote + local + SOCKS)
+SSH_TUNNELS=R:8080:localhost:80,L:3306:dbhost:3306,D:1080
+```
+
+**Single Tunnel (Legacy mode)**
+
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
 | `SSH_TUNNEL_TYPE` | Type of tunnel: `remote`, `local`, `dynamic`, `custom` | `remote` | `remote` |
@@ -167,7 +195,26 @@ environment:
   SSH_TUNNEL_REMOTE_PORT: 8080     # Access via vps.example.com:8080
 ```
 
-### 2. Multiple Services
+### 2. Multiple Services (Single Container - Efficient!)
+
+**NEW:** Use `SSH_TUNNELS` to expose multiple services in one container instead of running multiple containers:
+
+```yaml
+environment:
+  SSH_REMOTE_HOST: vps.example.com
+  SSH_REMOTE_USER: myuser
+  # Multiple tunnels in ONE container!
+  SSH_TUNNELS: R:8080:localhost:80,R:8443:localhost:443,R:25565:localhost:25565
+```
+
+This is much more efficient than the old method of running separate containers for each service.
+
+**Example tunnels:**
+- Web server (local:80 → VPS:8080)
+- HTTPS (local:443 → VPS:8443)
+- Minecraft server (local:25565 → VPS:25565)
+
+### 3. Multiple Services (Legacy - Multiple Containers)
 
 Run multiple tunnel containers for different services. See `examples/docker-compose.multiple-services.yml`:
 
