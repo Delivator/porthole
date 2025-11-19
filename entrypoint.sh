@@ -105,8 +105,8 @@ else
     exit 1
 fi
 
-# Build the SSH command
-SSH_CMD="ssh -N -T"
+# Build the SSH command (without 'ssh' keyword as autossh invokes it)
+SSH_CMD="-N -T"
 SSH_CMD="$SSH_CMD -p $SSH_REMOTE_PORT"
 SSH_CMD="$SSH_CMD $TUNNEL_ARGS"
 
