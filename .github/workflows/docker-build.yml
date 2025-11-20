@@ -52,10 +52,26 @@ jobs:
         docker run --rm porthole:test which ssh
         docker run --rm porthole:test which bash
         
-        # Test entrypoint validation
-        (docker run --rm porthole:test 2>&1 || true) | grep -q "SSH_REMOTE_HOST is required"
+        # 1. Temporarily disable 'exit on error' so the script continues
+        #    even if docker returns exit code 1
+        set +e
         
-        echo "✅ All tests passed!"
+        # 2. Run docker and capture output (both stderr and stdout)
+        OUTPUT=$(docker run --rm porthole:test 2>&1)
+        
+        # 3. Re-enable 'exit on error' for safety
+        set -e
+        
+        # 4. Check the output
+        #    We use echo "$OUTPUT" to pass the variable content to grep
+        if echo "$OUTPUT" | grep -q "SSH_REMOTE_HOST is required"; then
+          echo "✅ Test Passed: Found expected error message."
+        else
+          echo "❌ Test Failed: Expected error message not found."
+          echo "Actual Output was:"
+          echo "$OUTPUT"
+          exit 1
+        fi
 
   docker-hub:
     runs-on: ubuntu-latest
