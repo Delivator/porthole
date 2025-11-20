@@ -5,24 +5,7 @@ All notable changes to Porthole will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Added
-- **Multiple tunnels in single container**: New `SSH_TUNNELS` environment variable to define multiple tunnels efficiently
-  - Format: `R:8080:localhost:80,R:25565:localhost:25565,L:3306:dbhost:3306`
-  - Supports remote (R), local (L), and dynamic (D) tunnels in any combination
-  - Much more efficient than running multiple containers
-- New example: `docker-compose.multi-tunnel-efficient.yml` demonstrating multiple tunnels
-
-### Changed
-- Updated documentation to recommend multiple tunnels approach over multiple containers
-- Enhanced README.md with multiple tunnels configuration section
-- Updated QUICKSTART.md to show efficient multi-tunnel setup
-
-### Fixed
-- Fixed autossh command construction (removed 'ssh' keyword from SSH_CMD variable)
-
-## [1.0.0] - 2025-11-12
+## [1.0.0] - 2025-11-20
 
 ### Added
 - Initial release of Porthole containerized SSH tunnel

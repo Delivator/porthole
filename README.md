@@ -33,13 +33,13 @@ A highly configurable containerized SSH tunnel using autossh. Perfect for exposi
    ```bash
    mkdir -p ssh-keys
    # Copy your existing key or generate a new one
-   ssh-keygen -t rsa -b 4096 -f ./ssh-keys/id_rsa -N ""
-   chmod 600 ssh-keys/id_rsa
+   ssh-keygen -t ed25519 -f ./ssh-keys/id_ed25519 -N "" -C "porthole-tunnel-key"
+   chmod 600 ssh-keys/id_ed25519
    ```
 
 3. **Copy your public key to the remote server:**
    ```bash
-   ssh-copy-id -i ./ssh-keys/id_rsa.pub user@your-vps.com
+   ssh-copy-id -i ./ssh-keys/id_ed25519.pub user@your-vps.com
    ```
 
 4. **Configure your tunnel:**
@@ -73,7 +73,7 @@ A highly configurable containerized SSH tunnel using autossh. Perfect for exposi
 
 #### Tunnel Configuration
 
-**Multiple Tunnels (Recommended for efficiency)**
+**Multiple Tunnels**
 
 Use `SSH_TUNNELS` to define multiple tunnels in a single container:
 
@@ -191,13 +191,12 @@ environment:
   SSH_REMOTE_HOST: vps.example.com
   SSH_REMOTE_USER: myuser
   SSH_TUNNEL_TYPE: remote
-  SSH_TUNNEL_LOCAL_PORT: 5000      # NAS web interface
-  SSH_TUNNEL_REMOTE_PORT: 8080     # Access via vps.example.com:8080
+  SSH_TUNNELS: R:8080:localhost:5000 # NAS web interface (port 5000) → VPS port 8080, access via vps.example.com:8080
 ```
 
-### 2. Multiple Services (Single Container - Efficient!)
+### 2. Multiple Services
 
-**NEW:** Use `SSH_TUNNELS` to expose multiple services in one container instead of running multiple containers:
+**NEW:** Use `SSH_TUNNELS` to expose multiple services:
 
 ```yaml
 environment:
@@ -207,20 +206,10 @@ environment:
   SSH_TUNNELS: R:8080:localhost:80,R:8443:localhost:443,R:25565:localhost:25565
 ```
 
-This is much more efficient than the old method of running separate containers for each service.
-
 **Example tunnels:**
 - Web server (local:80 → VPS:8080)
 - HTTPS (local:443 → VPS:8443)
 - Minecraft server (local:25565 → VPS:25565)
-
-### 3. Multiple Services (Legacy - Multiple Containers)
-
-Run multiple tunnel containers for different services. See `examples/docker-compose.multiple-services.yml`:
-
-- Web server (port 80 → 8080)
-- Plex/Media server (port 32400 → 32400)
-- SSH access (port 22 → 2222)
 
 ### 3. Secure Remote Access
 
@@ -240,10 +229,8 @@ Access internal development services:
 
 ```yaml
 environment:
-  SSH_TUNNEL_TYPE: local
-  SSH_TUNNEL_LOCAL_PORT: 5432      # Local PostgreSQL port
-  SSH_TUNNEL_REMOTE_PORT: 5432     # Remote database port
   SSH_TUNNEL_REMOTE_HOST: db.internal.example.com
+  SSH_TUNNELS: L:5432:db.internal.example.com:5432 # Local port 5432 → Remote DB
 ```
 
 ## Examples
@@ -271,7 +258,7 @@ Or use SSH to deploy directly:
 ssh admin@nas-ip
 cd /volume1/docker/porthole
 git clone https://github.com/Delivator/porthole.git .
-# Configure .env and ssh-keys/id_rsa
+# Configure .env and ssh-keys/id_ed25519
 docker-compose up -d
 ```
 

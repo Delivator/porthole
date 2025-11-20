@@ -164,9 +164,14 @@ if [ -f ".gitignore" ]; then
         echo -e "${GREEN}✓ .gitignore protects .env files${NC}"
     fi
     
+    if grep -q "id_ed25519" .gitignore; then
+        echo -e "${GREEN}✓ .gitignore protects SSH keys${NC}"
+    fi
+
     if grep -q "id_rsa" .gitignore; then
         echo -e "${GREEN}✓ .gitignore protects SSH keys${NC}"
     fi
+
 else
     echo -e "${RED}✗ .gitignore not found${NC}"
     exit 1
@@ -181,5 +186,5 @@ echo -e "${YELLOW}Configuration files are valid and ready to use.${NC}"
 echo
 echo "Next steps:"
 echo "1. Copy .env.example to .env and configure your settings"
-echo "2. Place your SSH private key in ssh-keys/id_rsa"
+echo "2. Place your SSH private key in ssh-keys/id_ed25519"
 echo "3. Build and run with: docker-compose up -d"

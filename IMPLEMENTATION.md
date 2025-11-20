@@ -105,31 +105,6 @@ docker-compose up -d
 2. Paste docker-compose.yml
 3. Configure environment variables
 
-## Files Structure
-
-```
-porthole/
-├── Dockerfile                 # Container definition
-├── docker-compose.yml         # Deployment config
-├── entrypoint.sh             # Startup script
-├── .env.example              # Configuration template
-├── .gitignore                # Protects sensitive files
-├── .dockerignore             # Optimizes builds
-├── README.md                 # Full documentation
-├── QUICKSTART.md             # 5-minute setup guide
-├── LICENSE                   # MIT License
-├── test.sh                   # Build and runtime tests
-├── validate.sh               # Configuration validation
-├── ssh-keys/                 # SSH key directory
-│   ├── .gitignore           # Protects keys
-│   └── README.md            # Key setup instructions
-└── examples/                 # Example configurations
-    ├── docker-compose.nas-webserver.yml
-    ├── docker-compose.multiple-services.yml
-    ├── docker-compose.socks-proxy.yml
-    └── docker-compose.custom-tunnel.yml
-```
-
 ## Testing
 
 ### Validation Script
@@ -199,7 +174,7 @@ SSH_EXTRA_ARGS: -vvv
 - **Network**: Depends on tunneled traffic
 
 ### Scalability
-- Multiple tunnels: Run separate containers
+- Multiple tunnels: Multiple tunnels in a single container
 - High availability: Use autossh automatic reconnection
 - Load balancing: Not applicable (point-to-point tunnel)
 
@@ -221,9 +196,3 @@ SSH_EXTRA_ARGS: -vvv
 
 ## License
 MIT License - Free for personal and commercial use
-
-## Support
-- GitHub Issues for bugs
-- Discussions for questions
-- Examples directory for reference
-- Community contributions welcome

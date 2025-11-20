@@ -15,11 +15,11 @@ services:
       SSH_REMOTE_PORT: 22
       SSH_REMOTE_USER: myuser
       
-      # Define multiple tunnels in one container (much more efficient!)
+      # Define multiple tunnels in one container
       # Format: TYPE:ARG1:ARG2:ARG3,TYPE:ARG1:ARG2:ARG3,...
-      # R:remote_port:target_host:target_port  (Remote tunnel)
-      # L:local_port:target_host:target_port   (Local tunnel)
-      # D:local_port                           (Dynamic/SOCKS tunnel)
+      # R:remote_port:destination_host:local_port         (Remote tunnel)
+      # L:local_port:destination_host:destination_port    (Local tunnel)
+      # D:local_port                                      (Dynamic/SOCKS tunnel)
       
       # Example 1: Multiple remote tunnels for different services
       SSH_TUNNELS: R:8080:localhost:80,R:8443:localhost:443,R:25565:localhost:25565

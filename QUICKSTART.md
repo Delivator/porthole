@@ -21,10 +21,10 @@ cd porthole
 
 ```bash
 # Generate SSH key pair
-ssh-keygen -t rsa -b 4096 -f ./ssh-keys/id_rsa -N ""
+ssh-keygen -t ed25519 -f ./ssh-keys/id_ed25519 -N "" -C "porthole-tunnel-key"
 
 # Copy public key to your VPS
-ssh-copy-id -i ./ssh-keys/id_rsa.pub your-user@your-vps.com
+ssh-copy-id -i ./ssh-keys/id_ed25519.pub your-user@your-vps.com
 ```
 
 ### Step 3: Configure Environment
@@ -156,7 +156,7 @@ Then configure your browser to use `localhost:1080` as SOCKS5 proxy.
 
 1. Check VPS firewall allows the remote port
 2. Verify SSH key is correct
-3. Test SSH manually: `ssh -i ./ssh-keys/id_rsa user@vps.com`
+3. Test SSH manually: `ssh -i ./ssh-keys/id_ed25519 user@vps.com`
 
 ### Tunnel not forwarding
 

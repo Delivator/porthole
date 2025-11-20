@@ -34,14 +34,22 @@ fi
 # Setup SSH key
 if [ -n "$SSH_PRIVATE_KEY" ]; then
     log "Setting up SSH private key from environment variable"
-    echo "$SSH_PRIVATE_KEY" > /root/.ssh/id_rsa
-    chmod 600 /root/.ssh/id_rsa
+    echo "$SSH_PRIVATE_KEY" > /root/.ssh/id_ed25519
+    chmod 600 /root/.ssh/id_ed25519
+elif [ -f "/ssh-key/id_ed25519" ]; then
+    log "Using SSH private key (id_ed25519) from mounted volume"
+    cp /ssh-key/id_ed25519 /root/.ssh/id_ed25519
+    chmod 600 /root/.ssh/id_ed25519
+elif [ -f "/ssh-key/id_ecdsa" ]; then
+    log "Using SSH private key (id_ecdsa) from mounted volume"
+    cp /ssh-key/id_ecdsa /root/.ssh/id_ecdsa
+    chmod 600 /root/.ssh/id_ecdsa
 elif [ -f "/ssh-key/id_rsa" ]; then
-    log "Using SSH private key from mounted volume"
+    log "Using SSH private key (id_rsa) from mounted volume"
     cp /ssh-key/id_rsa /root/.ssh/id_rsa
     chmod 600 /root/.ssh/id_rsa
 else
-    error "No SSH private key provided. Please provide either SSH_PRIVATE_KEY environment variable or mount key to /ssh-key/id_rsa"
+    error "No SSH private key provided. Please provide either SSH_PRIVATE_KEY environment variable or mount key (id_rsa, id_ed25519, or id_ecdsa) to /ssh-key/"
     exit 1
 fi
 
@@ -136,33 +144,7 @@ if [ -n "$SSH_TUNNELS" ]; then
     
     log "Configured $TUNNEL_COUNT tunnel(s)"
     
-elif [ "$SSH_TUNNEL_TYPE" == "remote" ] || [ "$SSH_TUNNEL_TYPE" == "R" ]; then
-    # Single remote tunnel (backward compatibility)
-    if [ -z "$SSH_TUNNEL_LOCAL_PORT" ] || [ -z "$SSH_TUNNEL_REMOTE_PORT" ]; then
-        error "SSH_TUNNEL_LOCAL_PORT and SSH_TUNNEL_REMOTE_PORT are required for remote tunnel"
-        exit 1
-    fi
-    TUNNEL_ARGS="-R ${SSH_TUNNEL_REMOTE_PORT}:${SSH_TUNNEL_REMOTE_HOST}:${SSH_TUNNEL_LOCAL_PORT}"
-    log "Setting up REMOTE tunnel: Remote port ${SSH_TUNNEL_REMOTE_PORT} -> ${SSH_TUNNEL_REMOTE_HOST}:${SSH_TUNNEL_LOCAL_PORT}"
-    
-elif [ "$SSH_TUNNEL_TYPE" == "local" ] || [ "$SSH_TUNNEL_TYPE" == "L" ]; then
-    # Single local tunnel (backward compatibility)
-    if [ -z "$SSH_TUNNEL_LOCAL_PORT" ] || [ -z "$SSH_TUNNEL_REMOTE_PORT" ]; then
-        error "SSH_TUNNEL_LOCAL_PORT and SSH_TUNNEL_REMOTE_PORT are required for local tunnel"
-        exit 1
-    fi
-    TUNNEL_ARGS="-L ${SSH_TUNNEL_LOCAL_PORT}:${SSH_TUNNEL_REMOTE_HOST}:${SSH_TUNNEL_REMOTE_PORT}"
-    log "Setting up LOCAL tunnel: Local port ${SSH_TUNNEL_LOCAL_PORT} -> ${SSH_TUNNEL_REMOTE_HOST}:${SSH_TUNNEL_REMOTE_PORT}"
-    
-elif [ "$SSH_TUNNEL_TYPE" == "dynamic" ] || [ "$SSH_TUNNEL_TYPE" == "D" ]; then
-    # Single dynamic tunnel (backward compatibility)
-    if [ -z "$SSH_TUNNEL_LOCAL_PORT" ]; then
-        error "SSH_TUNNEL_LOCAL_PORT is required for dynamic tunnel"
-        exit 1
-    fi
-    TUNNEL_ARGS="-D ${SSH_TUNNEL_LOCAL_PORT}"
-    log "Setting up DYNAMIC tunnel (SOCKS proxy) on port ${SSH_TUNNEL_LOCAL_PORT}"
-    
+
 elif [ "$SSH_TUNNEL_TYPE" == "custom" ]; then
     # Custom tunnel arguments
     if [ -z "$SSH_CUSTOM_TUNNEL_ARGS" ]; then
@@ -181,12 +163,6 @@ SSH_CMD="-N -T"
 SSH_CMD="$SSH_CMD -p $SSH_REMOTE_PORT"
 SSH_CMD="$SSH_CMD $TUNNEL_ARGS"
 
-# Add extra SSH arguments if provided
-if [ -n "$SSH_EXTRA_ARGS" ]; then
-    SSH_CMD="$SSH_CMD $SSH_EXTRA_ARGS"
-    log "Extra SSH arguments: $SSH_EXTRA_ARGS"
-fi
-
 # Add user@host
 SSH_CMD="$SSH_CMD ${SSH_REMOTE_USER}@${SSH_REMOTE_HOST}"
 
@@ -195,7 +171,12 @@ log "========================================="
 log "Porthole SSH Tunnel Configuration"
 log "========================================="
 log "Remote Host: ${SSH_REMOTE_USER}@${SSH_REMOTE_HOST}:${SSH_REMOTE_PORT}"
-log "Tunnel Type: ${SSH_TUNNEL_TYPE}"
+log "Tunnels: ${SSH_TUNNELS}"
+# Add extra SSH arguments if provided
+if [ -n "$SSH_EXTRA_ARGS" ]; then
+    SSH_CMD="$SSH_CMD $SSH_EXTRA_ARGS"
+    log "Extra SSH arguments: $SSH_EXTRA_ARGS"
+fi
 log "AutoSSH Poll Interval: ${AUTOSSH_POLL}s"
 log "AutoSSH First Poll: ${AUTOSSH_FIRST_POLL}s"
 log "AutoSSH Log Level: ${AUTOSSH_LOGLEVEL}"
