@@ -53,13 +53,7 @@ jobs:
         docker run --rm porthole:test which bash
         
         # Test entrypoint validation
-        # set +o pipefail to ensure test keeps running even if docker run fails
-        set +o pipefail
-        # Capture output to a variable so we can print it if grep fails
-        OUTPUT=$(docker run --rm porthole:test 2>&1)
-        echo "$OUTPUT" | grep "SSH_REMOTE_HOST is required"
-        # Reset pipefail if you have more steps afterwards
-        set -o pipefail
+        (docker run --rm porthole:test 2>&1 || true) | grep -q "SSH_REMOTE_HOST is required"
         
         echo "✅ All tests passed!"
 
