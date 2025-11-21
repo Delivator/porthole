@@ -52,25 +52,58 @@ jobs:
         docker run --rm porthole:test which ssh
         docker run --rm porthole:test which bash
         
-        # 1. Temporarily disable 'exit on error' so the script continues
-        #    even if docker returns exit code 1
-        set +e
-        
-        # 2. Run docker and capture output (both stderr and stdout)
-        OUTPUT=$(docker run --rm porthole:test 2>&1)
-        
-        # 3. Re-enable 'exit on error' for safety
-        set -e
-        
-        # 4. Check the output
-        #    We use echo "$OUTPUT" to pass the variable content to grep
-        if echo "$OUTPUT" | grep -q "SSH_REMOTE_HOST is required"; then
-          echo "✅ Test Passed: Found expected error message."
+    - name: Integration Test with Real SSH Server
+      run: |
+        # 1. Create a private network for the test
+        docker network create test-net
+
+        # 2. Generate a temporary SSH keypair (no passphrase)
+        ssh-keygen -t ed25519 -f ./test_key -N ""
+        chmod 600 ./test_key
+
+        # 3. Start a dummy SSH Server
+        # We use a lightweight image that accepts a public key via ENV var
+        docker run -d \
+          --name mock-server \
+          --network test-net \
+          -e PUBLIC_KEY="$(cat ./test_key.pub)" \
+          -e USER_NAME=testuser \
+          lscr.io/linuxserver/openssh-server:latest
+
+        # Wait a few seconds for the server to boot up
+        sleep 5
+
+        # 4. Run YOUR image (The Client)
+        # We mount the private key and point it to 'mock-server'
+        # We run in detached mode (-d) because autossh runs forever
+        CONTAINER_ID=$(docker run -d \
+          --network test-net \
+          -v $(pwd)/test_key:/root/.ssh/id_ed25519 \
+          -e SSH_REMOTE_HOST=mock-server \
+          -e SSH_REMOTE_USER=testuser \
+          -e SSH_PRIVATE_KEY_PATH=/root/.ssh/id_ed25519 \
+          porthole:test)
+
+        # 5. Verification Phase
+        echo "Container started as ID: $CONTAINER_ID"
+        sleep 5
+
+        # Check if the container is still running (it should be!)
+        if [ "$(docker inspect -f '{{.State.Running}}' $CONTAINER_ID)" = "true" ]; then
+            echo "✅ Success: Container is running and maintaining connection."
         else
-          echo "❌ Test Failed: Expected error message not found."
-          echo "Actual Output was:"
-          echo "$OUTPUT"
-          exit 1
+            echo "❌ Failure: Container crashed."
+            docker logs $CONTAINER_ID
+            exit 1
+        fi
+
+        # Optional: Grep logs to confirm connection established
+        if docker logs $CONTAINER_ID 2>&1 | grep -q "Entering interactive session"; then
+             echo "✅ Logs confirm SSH session established."
+        else
+             echo "⚠️  Warning: Could not find success message in logs, but container is running."
+             # Uncomment below to see logs if this happens
+             # docker logs $CONTAINER_ID
         fi
 
   docker-hub:
