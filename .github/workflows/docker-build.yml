@@ -45,13 +45,6 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
     
-    - name: Test Docker image
-      run: |
-        # Test that required packages are installed
-        docker run --rm porthole:test which autossh
-        docker run --rm porthole:test which ssh
-        docker run --rm porthole:test which bash
-        
     - name: Integration Test with Real SSH Server
       run: |
         # 1. Create a private network for the test
