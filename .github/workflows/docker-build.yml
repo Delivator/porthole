@@ -47,8 +47,14 @@ jobs:
     
     - name: Integration Test with Real SSH Server
       run: |
-        # 1. Create a private network for the test
-        docker network create test-net
+        # --- PRE-CLEANUP ---
+        # Kill and remove any leftovers from previous failed runs
+        # '|| true' prevents failure if they don't exist
+        docker rm -f mock-server porthole-test || true
+        docker network rm test-net || true
+
+        # 1. Create a private network for the test if not exists
+        docker network create test-net || true
 
         # 2. Generate a temporary SSH keypair (no passphrase)
         ssh-keygen -t ed25519 -f ./test_key -N ""
@@ -57,6 +63,7 @@ jobs:
         # 3. Start a dummy SSH Server
         # We use a lightweight image that accepts a public key via ENV var
         docker run -d \
+          --rm \
           --name mock-server \
           --network test-net \
           -e PUBLIC_KEY="$(cat ./test_key.pub)" \
@@ -70,11 +77,13 @@ jobs:
         # We mount the private key and point it to 'mock-server'
         # We run in detached mode (-d) because autossh runs forever
         CONTAINER_ID=$(docker run -d \
+          --rm \
+          --name porthole-test \
           --network test-net \
-          -v $(pwd)/test_key:/root/.ssh/id_ed25519 \
+          -e SSH_PRIVATE_KEY="$(cat ./test_key)" \
           -e SSH_REMOTE_HOST=mock-server \
           -e SSH_REMOTE_USER=testuser \
-          -e SSH_PRIVATE_KEY_PATH=/root/.ssh/id_ed25519 \
+          -e SSH_TUNNELS=R:8000:localhost:8000 \
           porthole:test)
 
         # 5. Verification Phase
@@ -98,6 +107,12 @@ jobs:
              # Uncomment below to see logs if this happens
              # docker logs $CONTAINER_ID
         fi
+
+    - name: Cleanup
+      if: always() # This runs even if the previous step failed!
+      run: |
+        docker rm -f mock-server porthole-test || true
+        docker network rm test-net || true
 
   docker-hub:
     runs-on: ubuntu-latest
