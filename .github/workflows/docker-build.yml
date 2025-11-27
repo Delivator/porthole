@@ -1,0 +1,130 @@
+name: Docker Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Validate configuration files
+      run: |
+        chmod +x validate.sh
+        ./validate.sh
+    
+    - name: Validate shell scripts
+      run: |
+        shellcheck entrypoint.sh test.sh validate.sh || true
+
+  build:
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: false
+        load: true
+        tags: porthole:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Integration Test - End-to-End Tunnel
+      run: |
+        # --- PRE-CLEANUP ---
+        docker rm -f mock-ssh-server porthole-client mock-web || true
+        docker network rm test-net || true
+        
+        # --- START TEST ---
+        docker network create test-net
+
+        # 1. Generate Keypair
+        ssh-keygen -t ed25519 -f ./test_key -N ""
+        chmod 600 ./test_key
+        PUBLIC_KEY="$(cat ./test_key.pub)"
+
+        # 2. Start Mock Web Server (Target)
+        docker run -d \
+          --name mock-web \
+          --hostname mock-web \
+          --network test-net \
+          docker.io/traefik/whoami
+
+        # 3. Start "Remote" SSH Server
+        # We manually inject 'GatewayPorts yes' to ensure it is ACTIVE.
+        # We execute this command shell to modify config, then run /init
+        docker run -d \
+          --name mock-ssh-server \
+          --network test-net \
+          -p 8080:8080 \
+          -e PUBLIC_KEY="$PUBLIC_KEY" \
+          -e USER_NAME=testuser \
+          -e SUDO_ACCESS=true \
+          -e DOCKER_MODS=linuxserver/mods:openssh-server-ssh-tunnel \
+          lscr.io/linuxserver/openssh-server:latest
+
+        echo "⏳ Waiting for SSH Server to initialize..."
+        sleep 10
+
+        # 4. Start YOUR Porthole Client
+        # NOTE: We mount the key as a FILE to avoid variable corruption
+        # We map 0.0.0.0:8080 on the remote to mock-web:80
+        docker run -d \
+          --name porthole-client \
+          --network test-net \
+          -e SSH_PRIVATE_KEY="$(cat ./test_key)" \
+          -e SSH_REMOTE_HOST=mock-ssh-server \
+          -e SSH_REMOTE_USER=testuser \
+          -e SSH_REMOTE_PORT=2222 \
+          -e SSH_TUNNELS=R:0.0.0.0:8080:mock-web:80 \
+          porthole:test
+
+        echo "⏳ Waiting for Tunnel to establish..."
+        sleep 10
+
+        # 5. Verify with Fail-Safe Logging
+        echo "🚀 Testing Connectivity..."
+        
+        # We use '|| true' to prevent the script from dying immediately if curl fails
+        # This allows us to print the logs below.
+        RESPONSE="$(curl -s -v --retry-connrefused http://localhost:8080 || true)"
+        
+        echo "--- RESPONSE START ---"
+        echo "$RESPONSE"
+        echo "--- RESPONSE END ---"
+
+        if echo "$RESPONSE" | grep -q "Hostname: mock-web"; then
+           echo "✅ SUCCESS: Tunnel is active!"
+        else
+           echo "❌ FAILURE: Tunnel broken."
+           echo "🔍 Dumping Container Logs:"
+           echo "::group::Server Logs"
+           docker logs mock-ssh-server
+           echo "::endgroup::"
+           echo "::group::Client Logs"
+           docker logs porthole-client
+           echo "::endgroup::"
+           exit 1
+        fi
+
+    - name: Cleanup
+      if: always() # This runs even if the previous step failed!
+      run: |
+        docker rm -f mock-ssh-server porthole-client mock-web || true
+        docker network rm test-net || true

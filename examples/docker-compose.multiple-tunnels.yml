@@ -1,0 +1,44 @@
+# Example: Multiple Services
+
+version: '3.8'
+
+services:
+  porthole-multi:
+    build: ..
+    image: porthole:latest
+    container_name: porthole-multi-tunnel
+    restart: unless-stopped
+    
+    environment:
+      # Remote SSH server
+      SSH_REMOTE_HOST: vps.example.com
+      SSH_REMOTE_PORT: 22
+      SSH_REMOTE_USER: myuser
+      
+      # Define multiple tunnels in one container
+      # Format: TYPE:ARG1:ARG2:ARG3,TYPE:ARG1:ARG2:ARG3,...
+      # R:remote_port:destination_host:local_port         (Remote tunnel)
+      # L:local_port:destination_host:destination_port    (Local tunnel)
+      # D:local_port                                      (Dynamic/SOCKS tunnel)
+      
+      # Example 1: Multiple remote tunnels for different services
+      SSH_TUNNELS: R:8080:localhost:80,R:8443:localhost:443,R:25565:localhost:25565
+      
+      # Example 2: Mix of remote and local tunnels
+      # SSH_TUNNELS: R:8080:localhost:80,L:3306:dbhost:3306,R:9000:localhost:9000
+      
+      # Example 3: With SOCKS proxy
+      # SSH_TUNNELS: R:8080:localhost:80,R:25565:localhost:25565,D:1080
+      
+      # AutoSSH settings
+      AUTOSSH_POLL: 60
+      AUTOSSH_LOGLEVEL: 1
+      
+      SSH_STRICT_HOST_KEY_CHECKING: no
+      TZ: America/New_York
+    
+    volumes:
+      - ../ssh-keys:/ssh-key:ro
+    
+    # Use host network to access all local services
+    network_mode: host

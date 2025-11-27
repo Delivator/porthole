@@ -1,0 +1,48 @@
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# SSH keys and sensitive files
+ssh-keys/*
+!ssh-keys/README.md
+!ssh-keys/.gitignore
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+known_hosts
+
+# Docker override files
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts (if any)
+dist/
+build/

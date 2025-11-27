@@ -1,0 +1,26 @@
+# Docker Compose Override Example
+# This file shows how to use docker-compose.override.yml for local customization
+# Copy this to docker-compose.override.yml (which is in .gitignore)
+
+version: '3.8'
+
+services:
+  porthole:
+    # Override to build from local Dockerfile during development
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    # Enable debug logging
+    environment:
+      AUTOSSH_LOGLEVEL: 3
+      SSH_EXTRA_ARGS: -vvv
+    
+    # Alternative: Use stdin_open and tty for interactive debugging
+    # stdin_open: true
+    # tty: true
+    
+    # Mount local config for testing
+    # volumes:
+    #   - ./test-keys:/ssh-key:ro
+    #   - ./custom-ssh-config:/root/.ssh/config:ro
