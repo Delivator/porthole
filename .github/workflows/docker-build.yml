@@ -44,74 +44,89 @@ jobs:
         tags: porthole:test
         cache-from: type=gha
         cache-to: type=gha,mode=max
-    
-    - name: Integration Test with Real SSH Server
+
+    - name: Integration Test - End-to-End Tunnel
       run: |
         # --- PRE-CLEANUP ---
-        # Kill and remove any leftovers from previous failed runs
-        # '|| true' prevents failure if they don't exist
-        docker rm -f mock-server porthole-test || true
+        docker rm -f mock-ssh-server porthole-client mock-web || true
         docker network rm test-net || true
+        
+        # --- START TEST ---
+        docker network create test-net
 
-        # 1. Create a private network for the test if not exists
-        docker network create test-net || true
-
-        # 2. Generate a temporary SSH keypair (no passphrase)
+        # 1. Generate Keypair
         ssh-keygen -t ed25519 -f ./test_key -N ""
         chmod 600 ./test_key
+        PUBLIC_KEY="$(cat ./test_key.pub)"
 
-        # 3. Start a dummy SSH Server
-        # We use a lightweight image that accepts a public key via ENV var
+        # 2. Start Mock Web Server (Target)
         docker run -d \
-          --rm \
-          --name mock-server \
+          --name mock-web \
+          --hostname mock-web \
           --network test-net \
-          -e PUBLIC_KEY="$(cat ./test_key.pub)" \
+          docker.io/traefik/whoami
+
+        # 3. Start "Remote" SSH Server
+        # We manually inject 'GatewayPorts yes' to ensure it is ACTIVE.
+        # We execute this command shell to modify config, then run /init
+        docker run -d \
+          --name mock-ssh-server \
+          --network test-net \
+          -p 8080:8080 \
+          -e PUBLIC_KEY="$PUBLIC_KEY" \
           -e USER_NAME=testuser \
+          -e SUDO_ACCESS=true \
+          -e DOCKER_MODS=linuxserver/mods:openssh-server-ssh-tunnel \
           lscr.io/linuxserver/openssh-server:latest
 
-        # Wait a few seconds for the server to boot up
-        sleep 5
+        echo "⏳ Waiting for SSH Server to initialize..."
+        sleep 10
 
-        # 4. Run YOUR image (The Client)
-        # We mount the private key and point it to 'mock-server'
-        # We run in detached mode (-d) because autossh runs forever
-        CONTAINER_ID=$(docker run -d \
-          --rm \
-          --name porthole-test \
+        # 4. Start YOUR Porthole Client
+        # NOTE: We mount the key as a FILE to avoid variable corruption
+        # We map 0.0.0.0:8080 on the remote to mock-web:80
+        docker run -d \
+          --name porthole-client \
           --network test-net \
           -e SSH_PRIVATE_KEY="$(cat ./test_key)" \
-          -e SSH_REMOTE_HOST=mock-server \
+          -e SSH_REMOTE_HOST=mock-ssh-server \
           -e SSH_REMOTE_USER=testuser \
-          -e SSH_TUNNELS=R:8000:localhost:8000 \
-          porthole:test)
+          -e SSH_REMOTE_PORT=2222 \
+          -e SSH_TUNNELS=R:0.0.0.0:8080:mock-web:80 \
+          porthole:test
 
-        # 5. Verification Phase
-        echo "Container started as ID: $CONTAINER_ID"
-        sleep 5
+        echo "⏳ Waiting for Tunnel to establish..."
+        sleep 10
 
-        # Check if the container is still running (it should be!)
-        if [ "$(docker inspect -f '{{.State.Running}}' $CONTAINER_ID)" = "true" ]; then
-            echo "✅ Success: Container is running and maintaining connection."
+        # 5. Verify with Fail-Safe Logging
+        echo "🚀 Testing Connectivity..."
+        
+        # We use '|| true' to prevent the script from dying immediately if curl fails
+        # This allows us to print the logs below.
+        RESPONSE="$(curl -s -v --retry-connrefused http://localhost:8080 || true)"
+        
+        echo "--- RESPONSE START ---"
+        echo "$RESPONSE"
+        echo "--- RESPONSE END ---"
+
+        if echo "$RESPONSE" | grep -q "Hostname: mock-web"; then
+           echo "✅ SUCCESS: Tunnel is active!"
         else
-            echo "❌ Failure: Container crashed."
-            docker logs $CONTAINER_ID
-            exit 1
-        fi
-
-        # Optional: Grep logs to confirm connection established
-        if docker logs $CONTAINER_ID 2>&1 | grep -q "Entering interactive session"; then
-             echo "✅ Logs confirm SSH session established."
-        else
-             echo "⚠️  Warning: Could not find success message in logs, but container is running."
-             # Uncomment below to see logs if this happens
-             # docker logs $CONTAINER_ID
+           echo "❌ FAILURE: Tunnel broken."
+           echo "🔍 Dumping Container Logs:"
+           echo "::group::Server Logs"
+           docker logs mock-ssh-server
+           echo "::endgroup::"
+           echo "::group::Client Logs"
+           docker logs porthole-client
+           echo "::endgroup::"
+           exit 1
         fi
 
     - name: Cleanup
       if: always() # This runs even if the previous step failed!
       run: |
-        docker rm -f mock-server porthole-test || true
+        docker rm -f mock-ssh-server porthole-client mock-web || true
         docker network rm test-net || true
 
   docker-hub:
