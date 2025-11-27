@@ -10,16 +10,29 @@ A highly configurable containerized SSH tunnel using autossh. Perfect for exposi
 - 🐳 **Easy deployment** with Docker and Docker Compose
 - 🔄 **Auto-reconnect** with configurable monitoring and health checks
 - 📦 **Lightweight** Alpine-based image
-- 🏠 **NAS-friendly** designed for Synology, QNAP, and other NAS environments
+- 🏠 **NAS-friendly** designed for TrueNAS, Synology, QNAP, and other NAS environments
 - 🌐 **Network flexible** supports both host and bridge networking modes
 
 ## Quick Start
 
 ### Prerequisites
 
-- Docker and Docker Compose installed
+- Docker/Podman (or compatible container runtime) and Compose installed
 - SSH access to a remote server (VPS or public server)
 - SSH key pair for authentication
+
+### Server side setup
+ - Make sure tunneling is allowed on the remote server:
+   ```
+   PermitTunnel yes
+   GatewayPorts yes
+   AllowTcpForwarding yes
+   ```
+ - Recommended alive values on the remote server:
+   ```
+   ClientAliveInterval 15
+   ClientAliveCountMax 4
+   ```
 
 ### Basic Setup
 
@@ -33,13 +46,13 @@ A highly configurable containerized SSH tunnel using autossh. Perfect for exposi
    ```bash
    mkdir -p ssh-keys
    # Copy your existing key or generate a new one
-   ssh-keygen -t ed25519 -f ./ssh-keys/id_ed25519 -N "" -C "porthole-tunnel-key"
+   ssh-keygen -t ed25519 -f ./ssh-keys/id_ed25519 -N "" -C "porthole-tunnel"
    chmod 600 ssh-keys/id_ed25519
    ```
 
 3. **Copy your public key to the remote server:**
    ```bash
-   ssh-copy-id -i ./ssh-keys/id_ed25519.pub user@your-vps.com
+   ssh-copy-id -i ./ssh-keys/id_ed25519.pub user@vps.example.com
    ```
 
 4. **Configure your tunnel:**
@@ -51,12 +64,12 @@ A highly configurable containerized SSH tunnel using autossh. Perfect for exposi
 
 5. **Start the tunnel:**
    ```bash
-   docker-compose up -d
+   podman compose up -d
    ```
 
 6. **Check logs:**
    ```bash
-   docker-compose logs -f
+   podman compose logs -f
    ```
 
 ## Configuration
@@ -69,7 +82,6 @@ A highly configurable containerized SSH tunnel using autossh. Perfect for exposi
 |----------|-------------|---------|
 | `SSH_REMOTE_HOST` | Remote SSH server hostname or IP | `vps.example.com` |
 | `SSH_REMOTE_USER` | Remote SSH server username | `myuser` |
-| `SSH_REMOTE_PORT` | Remote SSH server port | `22` |
 
 #### Tunnel Configuration
 
@@ -99,20 +111,11 @@ SSH_TUNNELS=R:8080:localhost:80,R:25565:localhost:25565,R:8443:localhost:443
 SSH_TUNNELS=R:8080:localhost:80,L:3306:dbhost:3306,D:1080
 ```
 
-**Single Tunnel (Legacy mode)**
-
-| Variable | Description | Default | Example |
-|----------|-------------|---------|---------|
-| `SSH_TUNNEL_TYPE` | Type of tunnel: `remote`, `local`, `dynamic`, `custom` | `remote` | `remote` |
-| `SSH_TUNNEL_LOCAL_PORT` | Local port to tunnel | - | `8080` |
-| `SSH_TUNNEL_REMOTE_PORT` | Remote port to expose/connect | - | `8080` |
-| `SSH_TUNNEL_REMOTE_HOST` | Remote endpoint host | `localhost` | `localhost` |
-| `SSH_CUSTOM_TUNNEL_ARGS` | Custom SSH tunnel arguments (when type=custom) | - | `-R 8080:localhost:80` |
-
 #### SSH Authentication
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `SSH_REMOTE_PORT` | Remote SSH server port | `22` |
 | `SSH_PRIVATE_KEY` | SSH private key as environment variable (alternative to volume mount) | - |
 | `SSH_STRICT_HOST_KEY_CHECKING` | Enable strict host key checking | `no` |
 | `SSH_EXTRA_ARGS` | Additional SSH arguments | - |
@@ -129,29 +132,26 @@ SSH_TUNNELS=R:8080:localhost:80,L:3306:dbhost:3306,D:1080
 
 ### Tunnel Types
 
-#### Remote Tunnel (`-R`)
+#### Remote Tunnel
 Expose a local service on the remote server. Perfect for NAS deployments.
 
 ```yaml
-SSH_TUNNEL_TYPE=remote
-SSH_TUNNEL_LOCAL_PORT=8080        # Local service port
-SSH_TUNNEL_REMOTE_PORT=8080       # Port on VPS to listen on
-SSH_TUNNEL_REMOTE_HOST=localhost  # Usually localhost
+SSH_TUNNEL_REMOTE_HOST=vps.example.com  # Hostname or IP of your VPS
+SSH_TUNNELS=R:8081:localhost:8080
 ```
 
 **Use case:** Access your NAS web interface through your VPS
 ```
-Internet → VPS:8080 → SSH Tunnel → NAS:8080
+Internet → vps.example.com:8081 → SSH Tunnel → NAS:8080
 ```
 
-#### Local Tunnel (`-L`)
+#### Local Tunnel
 Access a remote service locally.
 
 ```yaml
 SSH_TUNNEL_TYPE=local
-SSH_TUNNEL_LOCAL_PORT=3306        # Local port to listen on
-SSH_TUNNEL_REMOTE_PORT=3306       # Remote service port
-SSH_TUNNEL_REMOTE_HOST=localhost  # Or internal hostname
+SSH_TUNNEL_REMOTE_HOST=vps.example.com    # Hostname or IP of your VPS
+SSH_TUNNELS=L:3306:localhost:3306
 ```
 
 **Use case:** Access a remote database securely
@@ -159,25 +159,16 @@ SSH_TUNNEL_REMOTE_HOST=localhost  # Or internal hostname
 localhost:3306 → SSH Tunnel → VPS → Database:3306
 ```
 
-#### Dynamic Tunnel (`-D`)
+#### Dynamic Tunnel/SOCKS Proxy
 Create a SOCKS proxy for secure browsing.
 
 ```yaml
-SSH_TUNNEL_TYPE=dynamic
-SSH_TUNNEL_LOCAL_PORT=1080  # SOCKS proxy port
+SSH_TUNNELS=D:1080
 ```
 
 **Use case:** Route browser traffic through VPS
 ```
 Browser → SOCKS:1080 → SSH Tunnel → VPS → Internet
-```
-
-#### Custom Tunnel
-Define your own tunnel arguments for complex setups.
-
-```yaml
-SSH_TUNNEL_TYPE=custom
-SSH_CUSTOM_TUNNEL_ARGS=-R 8080:localhost:80 -R 8443:localhost:443 -L 3306:db.internal:3306
 ```
 
 ## Use Cases
@@ -190,7 +181,6 @@ Expose your NAS web interface through a VPS without opening ports on your home n
 environment:
   SSH_REMOTE_HOST: vps.example.com
   SSH_REMOTE_USER: myuser
-  SSH_TUNNEL_TYPE: remote
   SSH_TUNNELS: R:8080:localhost:5000 # NAS web interface (port 5000) → VPS port 8080, access via vps.example.com:8080
 ```
 
@@ -202,7 +192,7 @@ environment:
 environment:
   SSH_REMOTE_HOST: vps.example.com
   SSH_REMOTE_USER: myuser
-  # Multiple tunnels in ONE container!
+  # Multiple tunnels
   SSH_TUNNELS: R:8080:localhost:80,R:8443:localhost:443,R:25565:localhost:25565
 ```
 
@@ -244,31 +234,11 @@ See the `examples/` directory for complete configurations:
 
 ## Deployment on NAS
 
-### Synology NAS
-
-1. Install Docker package from Package Center
-2. Create a new folder in File Station for Porthole
-3. Upload files via File Station or use git
-4. Open Docker app, go to Image, and build from Dockerfile
-5. Create container using your docker-compose.yml configuration
-
-Or use SSH to deploy directly:
-
-```bash
-ssh admin@nas-ip
-cd /volume1/docker/porthole
-git clone https://github.com/Delivator/porthole.git .
-# Configure .env and ssh-keys/id_ed25519
-docker-compose up -d
-```
-
-### QNAP NAS
-
-1. Install Container Station
-2. Create a new application using the docker-compose.yml
-3. Configure environment variables in Container Station UI
-4. Mount SSH key volume
-5. Start the container
+### TrueNAS
+1. Go to Apps → Discover Apps
+2. Press the three dots next to "Custom App" and select "Install via YAML"
+3. Name your app (e.g., porthole)
+4. Paste your docker-compose.yml content
 
 ### Other NAS Systems
 
@@ -289,10 +259,10 @@ Most modern NAS systems support Docker. Follow your NAS documentation for Docker
 
 ```bash
 # Check logs
-docker-compose logs -f
+podman compose logs -f
 
 # Test SSH connection manually
-docker-compose exec porthole ssh -p 22 user@vps.example.com
+podman compose exec porthole ssh -p 22 user@vps.example.com
 
 # Verify SSH key permissions
 ls -la ssh-keys/
@@ -387,4 +357,4 @@ If you encounter issues or have questions:
 
 ---
 
-**Note**: Always ensure you comply with your VPS provider's terms of service and applicable laws when creating tunnels.
+**Note**: Burak du bist ein geiler

@@ -16,8 +16,7 @@ services:
       SSH_REMOTE_USER: myuser
       
       # Create a SOCKS proxy on local port 1080
-      SSH_TUNNEL_TYPE: dynamic
-      SSH_TUNNEL_LOCAL_PORT: 1080
+      SSH_TUNNELS: "D:1080"
       
       SSH_STRICT_HOST_KEY_CHECKING: no
       AUTOSSH_LOGLEVEL: 1

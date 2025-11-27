@@ -176,18 +176,8 @@ if [ -n "$SSH_TUNNELS" ]; then
     done
     
     log "Configured $TUNNEL_COUNT tunnel(s)"
-    
-
-elif [ "$SSH_TUNNEL_TYPE" == "custom" ]; then
-    # Custom tunnel arguments
-    if [ -z "$SSH_CUSTOM_TUNNEL_ARGS" ]; then
-        error "SSH_CUSTOM_TUNNEL_ARGS is required when SSH_TUNNEL_TYPE is 'custom'"
-        exit 1
-    fi
-    TUNNEL_ARGS="$SSH_CUSTOM_TUNNEL_ARGS"
-    log "Using custom tunnel arguments: $TUNNEL_ARGS"
 else
-    error "Invalid SSH_TUNNEL_TYPE: $SSH_TUNNEL_TYPE. Valid options: remote, local, dynamic, custom"
+    error "Invalid SSH_TUNNELS: Valid options: "R:remote_port:target_host:target_port", "L:local_port:target_host:target_port", "D:local_port" or multiple tunnels separated by commas"
     exit 1
 fi
 

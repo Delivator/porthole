@@ -15,8 +15,7 @@ services:
       SSH_REMOTE_USER: myuser
       
       # Use custom tunnel arguments for complex setups
-      SSH_TUNNEL_TYPE: custom
-      SSH_CUSTOM_TUNNEL_ARGS: "-R 8080:localhost:80 -R 8443:localhost:443 -R 9000:192.168.1.100:9000"
+      SSH_TUNNELS: "R:8080:localhost:80,R:8443:localhost:443,R:9000:192.168.1.100:9000"
       
       # Additional SSH options
       SSH_EXTRA_ARGS: "-o ServerAliveInterval=60 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes"

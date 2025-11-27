@@ -14,7 +14,7 @@ services:
     # Enable debug logging
     environment:
       AUTOSSH_LOGLEVEL: 3
-      SSH_EXTRA_ARGS: -vvv
+      SSH_EXTRA_ARGS: -vvv -o ServerAliveInterval=60 -o ServerAliveCountMax=3
     
     # Alternative: Use stdin_open and tty for interactive debugging
     # stdin_open: true
