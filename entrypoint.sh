@@ -86,55 +86,88 @@ if [ -n "$SSH_TUNNELS" ]; then
         # Trim whitespace
         tunnel_def=$(echo "$tunnel_def" | xargs)
         
-        # Parse tunnel definition: TYPE:ARG1:ARG2:ARG3
+        # Parse tunnel definition by splitting on colon
         IFS=':' read -ra TUNNEL_PARTS <<< "$tunnel_def"
         
         tunnel_type="${TUNNEL_PARTS[0]}"
         
         case "$tunnel_type" in
             R|remote)
-                # Remote tunnel: R:remote_port:target_host:target_port
-                remote_port="${TUNNEL_PARTS[1]}"
-                target_host="${TUNNEL_PARTS[2]:-localhost}"
-                target_port="${TUNNEL_PARTS[3]}"
-                
-                if [ -z "$remote_port" ] || [ -z "$target_port" ]; then
-                    error "Invalid remote tunnel definition: $tunnel_def"
+                # SYNTAX 1 (5 parts): R:bind_ip:remote_port:target_host:target_port
+                if [ "${#TUNNEL_PARTS[@]}" -eq 5 ]; then
+                    bind_ip="${TUNNEL_PARTS[1]}"
+                    remote_port="${TUNNEL_PARTS[2]}"
+                    target_host="${TUNNEL_PARTS[3]:-localhost}"
+                    target_port="${TUNNEL_PARTS[4]}"
+                    
+                    TUNNEL_ARGS="$TUNNEL_ARGS -R ${bind_ip}:${remote_port}:${target_host}:${target_port}"
+                    log "  Remote tunnel: VPS:${bind_ip}:${remote_port} -> ${target_host}:${target_port}"
+
+                # SYNTAX 2 (4 parts): R:remote_port:target_host:target_port
+                elif [ "${#TUNNEL_PARTS[@]}" -eq 4 ]; then
+                    remote_port="${TUNNEL_PARTS[1]}"
+                    target_host="${TUNNEL_PARTS[2]:-localhost}"
+                    target_port="${TUNNEL_PARTS[3]}"
+                    
+                    TUNNEL_ARGS="$TUNNEL_ARGS -R ${remote_port}:${target_host}:${target_port}"
+                    log "  Remote tunnel: VPS:${remote_port} -> ${target_host}:${target_port}"
+                else
+                    error "Invalid remote tunnel definition (wrong part count): $tunnel_def"
                     exit 1
                 fi
-                
-                TUNNEL_ARGS="$TUNNEL_ARGS -R ${remote_port}:${target_host}:${target_port}"
-                log "  Remote tunnel: VPS:${remote_port} -> ${target_host}:${target_port}"
                 TUNNEL_COUNT=$((TUNNEL_COUNT + 1))
                 ;;
+
             L|local)
-                # Local tunnel: L:local_port:target_host:target_port
-                local_port="${TUNNEL_PARTS[1]}"
-                target_host="${TUNNEL_PARTS[2]:-localhost}"
-                target_port="${TUNNEL_PARTS[3]}"
-                
-                if [ -z "$local_port" ] || [ -z "$target_port" ]; then
-                    error "Invalid local tunnel definition: $tunnel_def"
+                # SYNTAX 1 (5 parts): L:bind_ip:local_port:target_host:target_port
+                # Essential if you want other containers to reach this tunnel!
+                if [ "${#TUNNEL_PARTS[@]}" -eq 5 ]; then
+                    bind_ip="${TUNNEL_PARTS[1]}"
+                    local_port="${TUNNEL_PARTS[2]}"
+                    target_host="${TUNNEL_PARTS[3]:-localhost}"
+                    target_port="${TUNNEL_PARTS[4]}"
+                    
+                    TUNNEL_ARGS="$TUNNEL_ARGS -L ${bind_ip}:${local_port}:${target_host}:${target_port}"
+                    log "  Local tunnel: ${bind_ip}:${local_port} -> ${target_host}:${target_port}"
+
+                # SYNTAX 2 (4 parts): L:local_port:target_host:target_port
+                elif [ "${#TUNNEL_PARTS[@]}" -eq 4 ]; then
+                    local_port="${TUNNEL_PARTS[1]}"
+                    target_host="${TUNNEL_PARTS[2]:-localhost}"
+                    target_port="${TUNNEL_PARTS[3]}"
+                    
+                    TUNNEL_ARGS="$TUNNEL_ARGS -L ${local_port}:${target_host}:${target_port}"
+                    log "  Local tunnel: localhost:${local_port} -> ${target_host}:${target_port}"
+                else
+                    error "Invalid local tunnel definition (wrong part count): $tunnel_def"
                     exit 1
                 fi
-                
-                TUNNEL_ARGS="$TUNNEL_ARGS -L ${local_port}:${target_host}:${target_port}"
-                log "  Local tunnel: localhost:${local_port} -> ${target_host}:${target_port}"
                 TUNNEL_COUNT=$((TUNNEL_COUNT + 1))
                 ;;
+
             D|dynamic)
-                # Dynamic tunnel: D:local_port
-                local_port="${TUNNEL_PARTS[1]}"
-                
-                if [ -z "$local_port" ]; then
-                    error "Invalid dynamic tunnel definition: $tunnel_def"
+                # SYNTAX 1 (3 parts): D:bind_ip:local_port
+                # Essential for sharing SOCKS proxy with other containers
+                if [ "${#TUNNEL_PARTS[@]}" -eq 3 ]; then
+                    bind_ip="${TUNNEL_PARTS[1]}"
+                    local_port="${TUNNEL_PARTS[2]}"
+                    
+                    TUNNEL_ARGS="$TUNNEL_ARGS -D ${bind_ip}:${local_port}"
+                    log "  Dynamic tunnel (SOCKS): ${bind_ip}:${local_port}"
+
+                # SYNTAX 2 (2 parts): D:local_port
+                elif [ "${#TUNNEL_PARTS[@]}" -eq 2 ]; then
+                    local_port="${TUNNEL_PARTS[1]}"
+                    
+                    TUNNEL_ARGS="$TUNNEL_ARGS -D ${local_port}"
+                    log "  Dynamic tunnel (SOCKS): localhost:${local_port}"
+                else
+                    error "Invalid dynamic tunnel definition (wrong part count): $tunnel_def"
                     exit 1
                 fi
-                
-                TUNNEL_ARGS="$TUNNEL_ARGS -D ${local_port}"
-                log "  Dynamic tunnel (SOCKS): localhost:${local_port}"
                 TUNNEL_COUNT=$((TUNNEL_COUNT + 1))
                 ;;
+
             *)
                 error "Unknown tunnel type in definition: $tunnel_def"
                 exit 1
