@@ -118,9 +118,7 @@ echo -e "${YELLOW}Checking .env.example configuration...${NC}"
 required_vars=(
     "SSH_REMOTE_HOST"
     "SSH_REMOTE_USER"
-    "SSH_TUNNEL_TYPE"
-    "SSH_TUNNEL_LOCAL_PORT"
-    "SSH_TUNNEL_REMOTE_PORT"
+    "SSH_TUNNELS"
 )
 
 for var in "${required_vars[@]}"; do
