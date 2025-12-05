@@ -1,0 +1,73 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" id="porthole-logo">
+                <defs>
+                    <!-- Gradient for the Container (Hexagon) -->
+                    <linearGradient id="containerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#1e3a8a;stop-opacity:1"></stop> <!-- Dark Blue -->
+                        <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1"></stop> <!-- Very Dark Blue -->
+                    </linearGradient>
+
+                    <!-- Gradient for the Metal Ring -->
+                    <linearGradient id="metalGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:#94a3b8;stop-opacity:1"></stop>
+                        <stop offset="50%" style="stop-color:#cbd5e1;stop-opacity:1"></stop>
+                        <stop offset="100%" style="stop-color:#64748b;stop-opacity:1"></stop>
+                    </linearGradient>
+
+                    <!-- Gradient for the Inner Tunnel/Glass -->
+                    <radialGradient id="tunnelGrad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                        <stop offset="40%" style="stop-color:#020617;stop-opacity:1"></stop>
+                        <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1"></stop>
+                    </radialGradient>
+
+                    <!-- Glow effect for the data beam -->
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="2.5" result="coloredBlur"></feGaussianBlur>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"></feMergeNode>
+                            <feMergeNode in="SourceGraphic"></feMergeNode>
+                        </feMerge>
+                    </filter>
+                </defs>
+
+                <!-- 1. The Container (Hexagon) -->
+                <!-- Points calculated for a hexagon centered at 100,100 with radius approx 90 -->
+                <path d="M100 10 L178 55 V145 L100 190 L22 145 V55 Z" fill="url(#containerGrad)" stroke="#334155" stroke-width="2"></path>
+
+                <!-- 2. The Porthole Ring (Outer) -->
+                <circle cx="100" cy="100" r="60" fill="url(#metalGrad)" stroke="#475569" stroke-width="1"></circle>
+                
+                <!-- 3. The Porthole Ring (Inner Shadow/Depth) -->
+                <circle cx="100" cy="100" r="45" fill="none" stroke="#334155" stroke-width="2"></circle>
+
+                <!-- 4. The Glass/Tunnel Void -->
+                <circle cx="100" cy="100" r="45" fill="url(#tunnelGrad)"></circle>
+
+                <!-- 5. Rivets (8 bolts) -->
+                <g fill="#475569">
+                    <circle cx="100" cy="48" r="3"></circle> <!-- Top -->
+                    <circle cx="100" cy="152" r="3"></circle> <!-- Bottom -->
+                    <circle cx="48" cy="100" r="3"></circle> <!-- Left -->
+                    <circle cx="152" cy="100" r="3"></circle> <!-- Right -->
+                    
+                    <circle cx="63" cy="63" r="3"></circle> <!-- Top Left -->
+                    <circle cx="137" cy="63" r="3"></circle> <!-- Top Right -->
+                    <circle cx="63" cy="137" r="3"></circle> <!-- Bottom Left -->
+                    <circle cx="137" cy="137" r="3"></circle> <!-- Bottom Right -->
+                </g>
+
+                <!-- 6. The "Tunnel" / Connection Beam -->
+                <!-- Represents the secure data stream passing through the porthole -->
+                <g filter="url(#glow)">
+                    <!-- The Arrow Shaft -->
+                    <rect x="70" y="96" width="60" height="8" rx="2" fill="#22c55e" opacity="0.8"></rect>
+                    
+                    <!-- The Arrow Head (Right - Outgoing) -->
+                    <path d="M125 85 L145 100 L125 115" fill="none" stroke="#4ade80" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+                    
+                    <!-- The Arrow Tail (Left - Incoming) -->
+                    <path d="M75 85 L55 100 L75 115" fill="none" stroke="#4ade80" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+                </g>
+
+                <!-- 7. Reflection on the Glass (Top) -->
+                <path d="M70 80 Q 100 65 130 80" fill="none" stroke="white" stroke-width="2" opacity="0.1" stroke-linecap="round"></path>
+            </svg>

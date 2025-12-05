@@ -1,5 +1,9 @@
 # Porthole 🚢
 
+<p align="center">
+	<img src="assets/porthole_logo.svg" alt="Porthole Logo" width="200">
+</p>
+
 A highly configurable containerized SSH tunnel using autossh. Perfect for exposing local services (like those on a NAS) through a remote VPS without port forwarding, protecting your personal IP while making services accessible from anywhere.
 
 ## Features
